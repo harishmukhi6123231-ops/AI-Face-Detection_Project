@@ -1,0 +1,33 @@
+# Python bytecode and virtual environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Local configuration and databases (may contain personal face data)
+.env
+.env.*
+!.env.example
+faces.db
+*.db-journal
+
+# Captured, uploaded, registered, and processed images
+static/uploads/*
+!static/uploads/.gitkeep
+static/pending_faces/*
+!static/pending_faces/.gitkeep
+static/registered_faces/*
+!static/registered_faces/.gitkeep
+results/*
+!results/.gitkeep
+
+# Downloaded model weights (download locally; do not commit large model files)
+models/**/*.onnx
+addons/*.onnx
+
+# Editor and operating system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

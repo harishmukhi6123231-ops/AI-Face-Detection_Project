@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101b22">
+  <title>Photo results · Face Finder</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <main class="page-shell result-shell">
+    <header class="topbar"><a class="brand" href="{{ url_for('index') }}"><span class="brand-mark">◉</span> FACE FINDER</a></header>
+    <section class="page-intro">
+      <p class="eyebrow">PHOTO RECOGNITION</p>
+      <h1>{% if count == 1 %}One face{% else %}{{ count }} faces{% endif %} scanned</h1>
+      <p>Registered people are named. Faces without a match are labeled Unknown.</p>
+    </section>
+    <figure class="result-card">
+      <img src="{{ url_for('result_file', filename=result_name) }}" alt="Group photo with recognized faces labeled">
+    </figure>
+    <section class="photo-people">
+      <div><h2>Recognized people</h2>{% set known = results|selectattr('name', 'ne', 'Unknown')|list %}{% if known %}<ul>{% for person in known %}<li>{{ person.name }}</li>{% endfor %}</ul>{% else %}<p>No registered people were recognized in this photo.</p>{% endif %}</div>
+      <div class="unknown-card"><h2>Unknown faces</h2>{% if unknown_items %}<p>Enter a name to add each person to the shared face registry.</p>{% else %}<p>No unknown faces found.</p>{% endif %}</div>
+    </section>
+    {% if unknown_items %}
+    <section class="unknown-register-grid" aria-label="Register unknown faces">
+      {% for item in unknown_items %}
+      <article class="unknown-register-card">
+        <img src="{{ item.image_url }}" alt="Captured unknown face">
+        <div class="unknown-register-body">
+          <h3>Unknown person</h3>
+          <p>Register this face using their name.</p>
+          <form class="photo-register-form" data-face-token="{{ item.token }}">
+            <label>Name<input name="name" maxlength="80" placeholder="Person’s name" required></label>
+            <button class="button primary" type="submit">Register person</button>
+          </form>
+          <p class="photo-register-status" aria-live="polite"></p>
+        </div>
+      </article>
+      {% endfor %}
+    </section>
+    {% endif %}
+    <div class="result-actions"><a class="button primary" href="{{ url_for('result_file', filename=result_name) }}" download="face-finder-result.jpg">Download annotated photo</a><a class="button secondary" href="{{ url_for('index') }}">← Back to dashboard</a></div>
+    <footer><span>FACE FINDER · INSIGHTFACE</span><span>Face data stays on this computer</span></footer>
+  </main>
+  <script>
+    try { document.documentElement.dataset.theme = localStorage.getItem('face-finder-theme') || 'dark'; } catch (_) {}
+    document.querySelectorAll('.photo-register-form').forEach((form) => {
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const name = new FormData(form).get('name').trim();
+        const status = form.nextElementSibling;
+        const button = form.querySelector('button');
+        button.disabled = true;
+        status.textContent = 'Registering face…';
+        try {
+          const response = await fetch('{{ url_for("register_photo_face") }}', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: form.dataset.faceToken, name }),
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || 'Could not register this face.');
+          status.textContent = data.message;
+          form.hidden = true;
+        } catch (error) {
+          status.textContent = error.message;
+          button.disabled = false;
+        }
+      });
+    });
+  </script>
+</body>
+</html>

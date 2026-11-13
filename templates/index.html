@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101b22">
+  <title>Face Finder · Attendance &amp; Recognition</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="side-nav">
+      <a class="brand" href="{{ url_for('index') }}"><span class="brand-mark">◉</span><span>FACE FINDER</span></a>
+      <nav class="sidebar-links" aria-label="Main navigation">
+        <button type="button" class="sidebar-link active" id="dashboardNav"><span class="nav-symbol">⌂</span> Dashboard</button>
+        <button type="button" class="sidebar-link" id="peopleNav"><span class="nav-symbol">♙</span> Registered people</button>
+      </nav>
+      <section class="sidebar-section about-section">
+        <p class="sidebar-label">ABOUT</p>
+        <p class="sidebar-copy">Recognize registered people, mark attendance, and identify faces in group photos.</p>
+      </section>
+      <section class="sidebar-section">
+        <p class="sidebar-label">HOW TO USE</p>
+        <ol class="how-to-list">
+          <li><span>1</span><div><strong>Check in</strong><small>Open the camera to mark attendance.</small></div></li>
+          <li><span>2</span><div><strong>Register</strong><small>Add a person’s details and capture their face.</small></div></li>
+          <li><span>3</span><div><strong>Identify</strong><small>Upload a group photo to find registered people.</small></div></li>
+        </ol>
+      </section>
+      <section class="sidebar-section theme-section">
+        <p class="sidebar-label">APPEARANCE</p>
+        <button class="theme-trigger" id="themeTrigger" type="button" aria-expanded="false" aria-controls="themeMenu"><span class="theme-dot"></span><span>Choose theme</span><span class="chevron">⌄</span></button>
+        <div class="theme-menu" id="themeMenu" hidden>
+          <button type="button" class="theme-choice" data-theme-choice="crimson"><i class="swatch crimson-swatch"></i><span>Crimson Red</span></button>
+          <button type="button" class="theme-choice" data-theme-choice="sky"><i class="swatch sky-swatch"></i><span>Sky Blue</span></button>
+          <button type="button" class="theme-choice" data-theme-choice="dark"><i class="swatch dark-swatch"></i><span>Dark</span></button>
+        </div>
+      </section>
+      <p class="sidebar-foot"><i></i> Face data stored on this computer</p>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar"><span class="local-badge"><i></i> LOCAL FACE REGISTRY</span></header>
+      <section class="page-intro">
+        <p class="eyebrow">YOUR PEOPLE, IN ONE PLACE</p>
+        <h1 id="pageTitle">Recognize. Check in.</h1>
+        <p id="pageDescription">Mark attendance or identify people in a group photo.</p>
+      </section>
+
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}<ul class="errors" role="alert">{% for message in messages %}<li>{{ message }}</li>{% endfor %}</ul>{% endif %}
+      {% endwith %}
+
+      <section class="dashboard-grid">
+        <article class="dashboard-card">
+          <header class="card-heading">
+            <span class="heading-icon attendance-icon">✓</span>
+            <div><p class="eyebrow">ATTENDANCE</p><h2>Check in with camera</h2></div>
+          </header>
+          <div class="camera-view">
+            <video id="cameraVideo" autoplay muted playsinline hidden></video>
+            <canvas id="cameraOverlay" hidden></canvas>
+            <div id="cameraPlaceholder" class="preview-placeholder"><span class="camera-glyph">▣</span><strong>Camera preview</strong><small>Your camera starts after you allow access</small></div>
+          </div>
+          <div class="camera-controls">
+            <button type="button" class="button primary" id="startCamera">Open camera to give attendance</button>
+            <button type="button" class="button secondary" id="stopCamera" hidden>Stop camera</button>
+          </div>
+          <p id="cameraStatus" class="status-line" aria-live="polite">Camera access starts only when you press the button.</p>
+          <div class="details-prompt" id="detailsPrompt" hidden>
+            <span><strong id="detailsPromptName"></strong><small>is registered from a photo. Add their details before attendance can be marked.</small></span>
+            <button type="button" class="button small-button" id="completeDetails">Add details</button>
+          </div>
+          <div class="card-bottom">
+            <button type="button" class="button secondary" id="registerNew">Register if you are new</button>
+            <button type="button" class="button secondary" id="checkAttendance">Check attendance</button>
+          </div>
+          <section class="attendance-results" id="attendanceResults" hidden aria-live="polite">
+            <div class="section-label attendance-heading"><span>Attendance history</span><button type="button" id="clearAttendance" class="text-button">Clear all</button></div>
+            <ul id="attendanceList" class="people-list"></ul>
+          </section>
+        </article>
+
+        <article class="dashboard-card" id="recognitionCard">
+          <header class="card-heading">
+            <span class="heading-icon photo-icon">⌕</span>
+            <div><p class="eyebrow">PHOTO RECOGNITION</p><h2>Identify people in a photo</h2></div>
+          </header>
+          <form id="uploadForm" class="upload-form" action="{{ url_for('detect') }}" method="post" enctype="multipart/form-data">
+            <label class="upload-preview" id="dropZone" for="image">
+              <img id="preview" alt="Selected group photo preview" hidden>
+              <span class="upload-empty" id="uploadEmpty"><span class="camera-glyph">↑</span><strong id="dropText">Upload a group photo</strong><small>Choose a photo from your device</small></span>
+              <span class="upload-hint">JPG, PNG or WEBP · Click to browse</span>
+              <input type="file" id="image" name="image" accept="image/png,image/jpeg,image/webp" required>
+            </label>
+            <button type="submit" class="button primary">Identify faces in photo <span aria-hidden="true">↗</span></button>
+          </form>
+          <div class="recognition-results">
+            <div class="section-label"><span>Recognition results</span><span class="muted-label">Appears after scanning</span></div>
+            <div class="result-slot recognized-slot"><span class="result-symbol">✓</span><div><strong>Recognized people</strong><small>Names will appear with boxes on the photo.</small></div></div>
+            <div class="result-slot unknown-slot"><span class="result-symbol">?</span><div><strong>Unknown faces</strong><small>Register a person to recognize them next time.</small></div></div>
+          </div>
+        </article>
+
+        <article class="dashboard-card registration-card" id="registrationPanel" hidden>
+          <header class="card-heading">
+            <span class="heading-icon attendance-icon">＋</span>
+            <div><p class="eyebrow">NEW PERSON</p><h2>Register a face</h2></div>
+          </header>
+          <p class="registration-intro">Capture the face first, then fill in the person’s details.</p>
+          <div id="captureStep" class="capture-step">
+            <span class="capture-step-number">STEP 1</span>
+            <p>Center one person in the camera preview on the left, then capture their face.</p>
+            <button type="button" class="button primary" id="captureFaceButton">Capture face</button>
+          </div>
+          <form id="registrationForm" class="registration-form" hidden>
+            <span class="capture-step-number form-step">STEP 2 · PERSON DETAILS</span>
+            <img id="registrationSnapshot" class="registration-snapshot" alt="Captured face for registration" hidden>
+            <label for="personName">Name</label><input id="personName" name="name" maxlength="80" placeholder="Full name" required>
+            <label for="personId">ID</label><input id="personId" name="person_id" maxlength="50" placeholder="Student or staff ID" required>
+            <label for="branchCourse">Branch / Course</label><input id="branchCourse" name="branch_course" maxlength="100" placeholder="Branch or course" required>
+            <label for="personContact">Contact</label><input id="personContact" name="contact" type="tel" maxlength="30" placeholder="Phone or contact number" required>
+            <div class="registration-actions"><button class="button secondary" type="button" id="retakeFace">Retake face</button><button class="button primary" type="submit" id="saveRegistration">Save registration</button></div>
+          </form>
+          <p id="registrationStatus" class="status-line" aria-live="polite">Camera starts when you open it or choose Register.</p>
+          <button class="button secondary back-recognition" type="button" id="backToRecognition">Back to photo recognition</button>
+        </article>
+      </section>
+      <section id="peopleRegistry" class="people-registry" hidden>
+        <header class="registry-heading">
+          <div><p class="eyebrow">PEOPLE</p><h2>Registered people</h2><p>Review captured face images and manage profile details.</p></div>
+          <button type="button" class="button secondary" id="registryBack">← Back to dashboard</button>
+        </header>
+        <div id="registeredPeopleList" class="registered-people-grid" aria-live="polite"></div>
+      </section>
+      <footer><span>FACE FINDER · INSIGHTFACE</span><span>Face data stays on this computer</span></footer>
+    </main>
+  </div>
+  <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
